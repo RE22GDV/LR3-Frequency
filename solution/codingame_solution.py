@@ -3,21 +3,25 @@ CodinGame - "Frequency-Based Decryption" (Medium)
 https://www.codingame.com/training/medium/frequency-based-decryption
 
 Self-contained solution, submitted as-is.
-This file is kept ASCII-only and byte-identical to the accepted submission;
-the Ukrainian write-up lives in README.md and in src/freqcrack/.
+This file is kept ASCII-only. The executable code is exactly what was
+submitted and accepted; only this header comment is added here.
+The Ukrainian write-up lives in README.md and in src/freqcrack/.
 
 Task: an English text was encrypted with a Caesar shift. The key is NOT
 given. Recover it by letter-frequency analysis and print the plaintext,
 preserving letter case and leaving non-alphabetic characters untouched.
 
-Method: the key space has only 26 elements, so this is a decision problem
-rather than a search. Every candidate shift is scored with the chi-squared
+Method: the key space holds only 26 elements, so breaking the cipher in
+practice comes down to trying every shift and picking the best candidate
+by a statistical criterion. Every candidate is scored with the chi-squared
 statistic against the reference frequency table supplied by the puzzle,
 and the candidate with the smallest value wins.
 
     chi2(k) = sum over letters of (observed - expected)^2 / expected
 
-Time O(26 * L), extra memory O(26).
+The histogram is built once and then rotated, and the message itself is
+decrypted once, so the cost is O(L + 26^2) time and O(26) extra memory.
+As 26 is a constant, this is O(L).
 """
 
 import sys

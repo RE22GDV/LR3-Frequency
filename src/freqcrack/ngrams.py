@@ -96,7 +96,7 @@ class NgramScorer:
         return total
 
     def score(self, text: str) -> float:
-        """Логправдоподібність тексту; не-літерні символи ігноруються."""
+        """Логарифмічна правдоподібність тексту; нелітерні символи ігноруються."""
         seq = [ord(ch) - _A for ch in text.upper() if "A" <= ch.upper() <= "Z"]
         return self.score_indices(seq)
 

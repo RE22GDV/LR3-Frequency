@@ -142,7 +142,17 @@ def save(fig, name: str) -> str:
 # --------------------------------------------------------------------------- #
 
 def load_corpus() -> str:
-    """Англомовний корпус для експериментів (текст суспільного надбання)."""
+    """
+    Англомовний текст, на фрагментах якого проводяться експерименти.
+
+    Джерело — файл ``data/sample_plaintext.txt`` у репозиторії: суцільний
+    англійський текст без діакритики (2 501 байт, 2 497 символів після
+    нормалізації; лише літери A..Z, пробіли та розділові знаки). Тут текст
+    нормалізується за пробілами,
+    щоб фрагменти нарізалися однаково незалежно від розбиття на рядки.
+    Мовна модель квадриграм будується з іншого, значно більшого корпусу —
+    див. ``tools/build_ngrams.py``.
+    """
     raw = (ROOT / "data" / "sample_plaintext.txt").read_text(encoding="utf-8")
     return " ".join(raw.split())
 
@@ -373,14 +383,32 @@ def exp_naive_error(corpus: str, quick: bool) -> dict:
 
     errors = [0] * M
     top_letters: dict[str, int] = {}
+    # Окремо рахуємо випадки, коли максимум гістограми досягається на кількох
+    # літерах. Правило розв'язує нічию на користь меншого індексу, а циклічний
+    # зсув такого вибору НЕ зберігає, тому саме нічиї ламають регулярність
+    # похибки. Без цього обліку точність правила виглядає незрозуміло нижчою
+    # за частку фрагментів, у яких найчастішою літерою є E.
+    unique_max = 0
+    unique_model_ok = 0
+    hits_unique = 0
+    hits_tied = 0
     for _ in range(trials):
         plain = sample_of(corpus, length, rng)
         key = rng.randrange(M)
         guess = most_frequent_rule(encrypt(plain, key))
         errors[(guess - key) % M] += 1
         counts = [plain.upper().count(ch) for ch in ALPHABET]
-        top = ALPHABET[max(range(M), key=lambda i: counts[i])]
+        peak = max(counts)
+        tied = [i for i in range(M) if counts[i] == peak]
+        top = ALPHABET[tied[0]]
         top_letters[top] = top_letters.get(top, 0) + 1
+        if len(tied) == 1:
+            unique_max += 1
+            hits_unique += (guess == key)
+            # Очікувана похибка: зсув найчастішої літери тексту відносно E.
+            unique_model_ok += ((guess - key) % M == (tied[0] - 4) % M)
+        else:
+            hits_tied += (guess == key)
 
     shifts = list(range(-12, 14))
     values = [100.0 * errors[k % M] / trials for k in shifts]
@@ -396,9 +424,9 @@ def exp_naive_error(corpus: str, quick: bool) -> dict:
     ax.annotate("точне влучання: %s %%" % _n(correct, 1), xy=(0, correct),
                 xytext=(2.0, correct + 4), fontsize=9.5, color=INK,
                 arrowprops=dict(arrowstyle="-", color=S2, linewidth=1.4))
-    _finish(ax, "повідомлення по %d символів, %d випробувань; "
-                "похибка дорівнює зсуву найчастішої літери тексту відносно E"
-            % (length, trials))
+    _finish(ax, "повідомлення по %d символів, %d випробувань; якщо максимум "
+                "гістограми єдиний, похибка дорівнює зсуву найчастішої літери "
+                "тексту відносно E" % (length, trials))
     path = save(fig, "fig5_naive_error.png")
 
     top_sorted = sorted(top_letters.items(), key=lambda kv: -kv[1])[:5]
@@ -409,6 +437,14 @@ def exp_naive_error(corpus: str, quick: bool) -> dict:
         "accuracy_percent": correct,
         "error_distribution_percent": {str(k): values[shifts.index(k)] for k in shifts},
         "top_plaintext_letters": [(ch, 100.0 * n / trials) for ch, n in top_sorted],
+        "unique_max_trials": unique_max,
+        "unique_max_percent": 100.0 * unique_max / trials,
+        "tie_trials": trials - unique_max,
+        "tie_percent": 100.0 * (trials - unique_max) / trials,
+        "model_holds_when_unique": unique_model_ok,
+        "accuracy_unique_percent": 100.0 * hits_unique / unique_max if unique_max else 0.0,
+        "accuracy_tied_percent":
+            100.0 * hits_tied / (trials - unique_max) if trials - unique_max else 0.0,
     }
 
 
@@ -516,8 +552,12 @@ def main() -> int:
 
     results = {
         "meta": {
+            "corpus_file": "data/sample_plaintext.txt",
             "corpus_chars": len(corpus),
             "language_model": default_scorer().source,
+            "language_model_builder": "tools/build_ngrams.py",
+            "seeds": {"success_vs_length": 20260923, "naive_error": 4242,
+                      "flat_cipher": 77},
             "quick": args.quick,
         },
         "keyspace": {
