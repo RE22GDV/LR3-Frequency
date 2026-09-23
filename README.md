@@ -124,6 +124,7 @@ LR3_Frequency/
 ├── tools/build_ngrams.py          Побудова мовної моделі з корпусу
 ├── data/                          Модель мови + текст для експериментів
 └── docs/
+    ├── ЛР_3_...РС-61мн.pdf/.docx  Звіт у двох форматах, 16 стор.
     ├── figures/                   Рисунки (+ pdf/ — версії без заголовків)
     └── results/                   experiments.json, summary.md
 ```
