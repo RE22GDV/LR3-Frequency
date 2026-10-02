@@ -20,8 +20,9 @@ and the candidate with the smallest value wins.
     chi2(k) = sum over letters of (observed - expected)^2 / expected
 
 The histogram is built once and then rotated, and the message itself is
-decrypted once, so the cost is O(L + 26^2) time and O(26) extra memory.
-As 26 is a constant, this is O(L).
+decrypted once, so the cost is O(L + 26^2) time; as 26 is a constant,
+that is O(L). Extra memory is O(L): the histogram and the key search
+need only O(26), the rest is the output buffer.
 """
 
 import sys
@@ -47,6 +48,12 @@ def main() -> None:
         elif "a" <= ch <= "z":
             counts[ord(ch) - 97] += 1
             total += 1
+
+    # No letters at all: there is nothing to analyse, so echo the input back.
+    # The puzzle guarantees English text, but chi2 would divide by zero here.
+    if total == 0:
+        print(message)
+        return
 
     # Score every possible shift; shifting the histogram is equivalent to
     # decrypting the whole message, but costs 26 operations instead of L.

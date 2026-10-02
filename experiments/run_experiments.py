@@ -36,6 +36,7 @@ from matplotlib.ticker import PercentFormatter  # noqa: E402
 from freqcrack import (  # noqa: E402
     ALPHABET,
     M,
+    METHODS,
     PUZZLE_FREQ,
     break_caesar,
     chi_squared,
@@ -449,11 +450,44 @@ def exp_naive_error(corpus: str, quick: bool) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-#  Експеримент 6 — шифр без статистичних закономірностей
+#  Експеримент 6 — коли довжини недостатньо
+# --------------------------------------------------------------------------- #
+
+def exp_atypical_text() -> dict:
+    """
+    Контрприклад до спокусливого висновку «досить 40 символів».
+
+    Вирішує не довжина, а схожість розподілу літер на англійський.
+    Текст із 80 символів, у якому лише три різні літери, не зламується
+    жодним із чотирьох правил, хоча вдвічі довший за поріг із рис. 3.7.
+    """
+    print("[6] Довгий, але нетиповий текст")
+    plain = "I did it. " * 8
+    key = 3
+    ciphertext = encrypt(plain, key)
+    letters = [ch for ch in plain.upper() if ch in ALPHABET]
+    found = {m: break_caesar(ciphertext, m).key for m in METHODS}
+    for m in METHODS:
+        print("    %-16s ключ %2d (істина %d) %s"
+              % (METHOD_LABELS[m], found[m], key,
+                 "OK" if found[m] == key else "ПОМИЛКА"))
+    return {
+        "text": plain,
+        "length": len(plain),
+        "letters": len(letters),
+        "distinct_letters": len(set(letters)),
+        "true_key": key,
+        "recovered_key": found,
+        "any_rule_succeeded": any(v == key for v in found.values()),
+    }
+
+
+# --------------------------------------------------------------------------- #
+#  Експеримент 7 — шифр без статистичних закономірностей
 # --------------------------------------------------------------------------- #
 
 def exp_flat_cipher(corpus: str) -> dict:
-    print("[6] Порівняння з шифром, що не лишає статистичних слідів")
+    print("[7] Порівняння з шифром, що не лишає статистичних слідів")
     text = corpus[:600]
     rng = random.Random(77)
 
@@ -571,6 +605,7 @@ def main() -> int:
         "invariance": exp_invariance(corpus),
         "success_vs_length": exp_success_vs_length(corpus, args.quick),
         "naive_error": exp_naive_error(corpus, args.quick),
+        "atypical_text": exp_atypical_text(),
         "flat_cipher": exp_flat_cipher(corpus),
     }
     results["meta"]["total_seconds"] = time.perf_counter() - t0
